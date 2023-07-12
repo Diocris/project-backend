@@ -17,24 +17,26 @@ export const users: Tusers[] = [
   },
 ];
 
-export const createUser = (
-  id: string,
-  name: string,
-  email: string,
-  password: string
-) => {
-  users.push({
-    id: id,
-    name: name,
-    email: email,
-    password: password,
-    createdAt: new Date().toISOString(),
-  }) && console.log("\x1b[47m%s\x1b[0m", `User successful created.`);
-};
+// export const createUser = (
+//   id: string,
+//   name: string,
+//   email: string,
+//   password: string
+// ) => {
+//   users.push({
+//     id: id,
+//     name: name,
+//     email: email,
+//     password: password,
+//     createdAt: new Date().toISOString(),
+//   }) && console.log("\x1b[47m%s\x1b[0m", `User successful created.`);
 
-export const getAllUsers = () => {
-  console.log(users);
-};
+
+// };
+
+// export const getAllUsers = () => {
+//   console.log(users);
+// };
 
 //*
 //*  Products
@@ -56,32 +58,32 @@ export const products: Tproducts[] = [
   },
 ];
 
-export const createProduct = (
-  id: string,
-  name: string,
-  price: number,
-  description: string,
-  imageUrl: string
-) => {
-  products.push({
-    id: id,
-    name: name,
-    price: price,
-    description: description,
-    imageUrl: imageUrl,
-  }) && console.log("\x1b[47m%s\x1b[0m", `Product successful registered.`);
-};
+// export const createProduct = (
+//   id: string,
+//   name: string,
+//   price: number,
+//   description: string,
+//   imageUrl: string
+// ) => {
+//   products.push({
+//     id: id,
+//     name: name,
+//     price: price,
+//     description: description,
+//     imageUrl: imageUrl,
+//   }) && console.log("\x1b[47m%s\x1b[0m", `Product successful registered.`);
+// };
 
-export const getAllProducts = () => {
-  console.log(products);
-};
+// export const getAllProducts = () => {
+//   console.log(products);
+// };
 
-export const searchProductByName = (name: string) => {
-  const productFound = products.filter((product) => {
-    return product.name.toLowerCase() === name.toLowerCase();
-  });
-  console.table(productFound);
-};
+// export const searchProductByName = (name: string) => {
+//   const productFound = products.filter((product) => {
+//     return product.name.toLowerCase() === name.toLowerCase();
+//   });
+//   console.table(productFound);
+// };
 
 //* Pets
 

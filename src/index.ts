@@ -6,7 +6,7 @@ import {
   pets,
   products,
 } from "./database";
-import { type } from "os";
+
 
 // cria servidor express
 const app = express();
@@ -129,6 +129,8 @@ app.post("/users", (req: Request, res: Response) => {
       throw new Error("User email already registered.");
     }
 
+
+
     //check id string
     if (typeof id !== "string") {
       res.status(400)
@@ -182,10 +184,10 @@ app.post("/products", (req: Request, res: Response) => {
     const description = req.body.description as string;
     const imageUrl = req.body.imageUrl as string;
 
-    const idAlreadRegistered = products.find((product) => {
+    const idAlreadyRegistered = products.find((product) => {
       return product.id === id;
     });
-    if (idAlreadRegistered) {
+    if (idAlreadyRegistered) {
       res.status(400)
       throw new Error("This ID is already been used.");
     }
@@ -305,6 +307,8 @@ app.put("/products/:id", (req: Request, res: Response) => {
       res.status(404)
       throw new Error("Product not found.");
     }
+
+
 
     if (newName !== undefined) {
       if (typeof newName !== "string") {
