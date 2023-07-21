@@ -1,105 +1,93 @@
 import express, { Request, Response } from "express";
-import { PET_SIZE, TPet, Tproducts, Tusers } from "./types";
+import { Tproducts, Tusers } from "./types";
 import cors from "cors";
-import {
-  users,
-  pets,
-  products,
-} from "./database";
+
+import { db } from "./database/knex";
 
 
-// cria servidor express
+// create express server
 const app = express();
 
-//middleware - garante que respostas sejam em JSON
+//middleware - garantees response is a JSON file
 app.use(express.json());
 
-//middleware config - habilita uso do CORS (cross-origin-sharing) que permite que respostas do front sejam enviadas para um http (back) localmente.
+//middleware config - enables CORS (cross-origin-sharing) that allows front-end responses be send to a back-end local server.
 app.use(cors());
 
-//configura porta de uso do app
+//enables port to app use
 app.listen(3003, () => console.log(`Port 3003 connected.`));
 
-//sintaxe de criação de endpoints:
-//* app.method(path, handler)
-//-- app = acessa recursos do express
-//-- method = metodo de requisição http usado, CRUD (get, post, put, delete)
-//-- path = caminho ou url que será utilizado para chegar ao endpoint, sempre entre aspas como string
-//-- handler = callback adicinado para quando isso chegar ao endpoint (recebe dois parametros, sendo um a requisição recebida no front como a resposta enviada pelo back)
 
-
-
-//retorna todos os users
-app.get("/users", (req: Request, res: Response) => {
+//Return all users
+app.get("/users", async (req: Request, res: Response) => {
 
   try {
-    res.status(200).send(users);
+    //get users table
+    const result = await db('users')
+
+    res.status(200).send(result);
+
   } catch (error: any) {
-    res.status(404).send(error.message);
+
+    if (res.statusCode === 200) {
+      res.status(500)
+    }
+
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
-//retorna todos os produtos
-app.get("/products", (req: Request, res: Response) => {
+//Return all products
+app.get("/products", async (req: Request, res: Response) => {
 
   try {
+
     const queryParams = req.query.name as string | undefined
 
+    //check if queryParams exists or if it has more than 2 digits.
     if (queryParams !== undefined && queryParams.length < 2) {
       res.status(400)
       throw new Error("Searching by name expect at least 2 letters.")
     }
 
+    //if exists, check its length to return by name, could be a part of the full word.
     if (queryParams && queryParams.length > 2) {
-      const result = products.filter((product) => {
-        return product.name.toLowerCase().includes(queryParams.toLowerCase());
-      });
+
+      const result = await db.select('*').from('products').where(`name`, `like`, `%${queryParams}%`)
+
       res.status(200).send(result)
     }
 
-    res.status(200).send(products);
+    //if no params is passed, returns products table.
+    if (!queryParams || queryParams === undefined) {
 
-  } catch (error: any) {
-    res.status(400).send(error.message);
-  }
-
-});
-
-//retorna produto especifico
-app.get("/products/:name", (req: Request, res: Response) => {
-
-  try {
-    const name = req.params.name;
-
-    if (name.length <= 1) {
-      res.status(400)
-      throw new Error("Too short to find. Try with at least 2 characters.");
+      const result = await db('products')
+      res.status(200).send(result);
     }
 
-    const result = products.filter((product) => {
-      return product.name.toLowerCase().includes(name.toLowerCase());
-    });
-
-    if (result.length <= 0) {
-      res.status(404);
-      throw new Error("Product not found.");
-    }
-
-
-    res.status(200).send(result);
 
   } catch (error: any) {
     if (res.statusCode === 200) {
-      res.status(500);
+      res.status(500)
     }
-    res.send(error.message);
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
+
+
 //create new user
-app.post("/users", (req: Request, res: Response) => {
+app.post("/users", async (req: Request, res: Response) => {
 
   try {
     const id = req.body.id as string
@@ -108,21 +96,20 @@ app.post("/users", (req: Request, res: Response) => {
     const password = req.body.password as string;
     const createdAt = new Date().toISOString();
 
-    //id already registered checker.
-    const idAlreadyRegistered = users.find((user) => {
-      return user.id === id;
-    });
+    //check if id already exists
+    const [idAlreadyRegistered] = await db.select(`*`).from('users').where(`id`, `=`, `${id}`)
+
+
     //avoid duplicated id.
     if (idAlreadyRegistered) {
       res.status(400)
-      throw new Error("User id is already registered.");
+      throw new Error("User id already registered.");
     }
 
     //email already registered checker.
-    const emailAlreadyRegistered = users.find((user) => {
-      res.status(400)
-      return user.email === email;
-    });
+    const [emailAlreadyRegistered] = await db.select(`*`).from(`users`).where(`email`, `=`, `${email}`)
+
+
     //avoid duplicated email.
     if (emailAlreadyRegistered) {
       res.status(400)
@@ -131,19 +118,19 @@ app.post("/users", (req: Request, res: Response) => {
 
 
 
-    //check id string
+    //check id string.
     if (typeof id !== "string") {
       res.status(400)
       throw new Error("ID should be a string.");
     }
 
-    //check name string
+    //check name string.
     if (typeof name !== "string" || name.match(/^(?=.*\d).+$/)) {
       res.status(400)
       throw new Error("Name should be a string without number.");
     }
 
-    //check email format
+    //check email format.
     const emailRegEx = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
     if (typeof email !== "string" || !email.match(emailRegEx)) {
       res.status(400)
@@ -157,150 +144,182 @@ app.post("/users", (req: Request, res: Response) => {
       res.status(400)
       throw new Error("Invalid password format.");
     }
-    const newUser: Tusers = {
-      id,
-      name,
-      email,
-      password,
-      createdAt,
-    };
 
-    users.push(newUser);
+    //New object(user) to be insert on table.
+    const newUser: Tusers = {
+      id: id,
+      name: name,
+      email: email,
+      password: password,
+      created_at: createdAt
+    }
+
+    await db(`users`).insert(newUser)
 
     res.status(201).send("User registered!");
   } catch (error: any) {
-    res.send(error.message);
+    if (res.statusCode === 201) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
 //create new product
-app.post("/products", (req: Request, res: Response) => {
+app.post("/products", async (req: Request, res: Response) => {
 
   try {
     const id = req.body.id as string;
     const name = req.body.name as string;
     const price = req.body.price as number;
     const description = req.body.description as string;
-    const imageUrl = req.body.imageUrl as string;
+    const image_url = req.body.image_url as string;
 
-    const idAlreadyRegistered = products.find((product) => {
-      return product.id === id;
-    });
+    //check if ID already exists.
+    const [idAlreadyRegistered] = await db('products').where({ id: id })
     if (idAlreadyRegistered) {
       res.status(400)
       throw new Error("This ID is already been used.");
     }
 
+    //check if id is a string.
     if (typeof id !== "string") {
       res.status(400)
-      throw new Error("Id should be a string.");
+      throw new
+        Error("Id should be a string.");
     }
+    //check if name is a string.
     if (typeof name !== "string") {
       res.status(400)
       throw new Error("Name should be a string.");
     }
+    //check if price is a number greater or equal to 0.
     if (typeof price !== "number" || price < 0) {
       res.status(400)
       throw new Error("Price should be a number greater than 0");
     }
+    //check if description is a string or if it has more than 1 digit.
     if (typeof description !== "string" || description.length < 1) {
       res.status(400)
       throw new Error("Description shoud be a string with more than 1 digit.");
     }
-    if (typeof imageUrl !== "string") {
+    //check if image_url is a string. 
+    if (typeof image_url !== "string") {
       res.status(400)
       throw new Error("Image url should be a link.");
     }
 
+    //creates a new object following the Tproducts pre-defined type.
     const newProduct: Tproducts = {
-      id,
-      name,
-      price,
-      description,
-      imageUrl,
-    };
+      id: id,
+      name: name,
+      price: price,
+      description: description,
+      image_url: image_url
+    }
 
-    products.push(newProduct);
-
+    //insert new product to products table.
+    await db('products').insert(newProduct)
     res.status(201).send("Product registered!");
+
   } catch (error: any) {
-    res.send(error.message);
+    if (res.statusCode === 201) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
 //delete user
-app.delete("/users/:id", (req: Request, res: Response) => {
+app.delete("/users/:id", async (req: Request, res: Response) => {
 
   try {
-    const id = req.params.id;
-    const idExist = users.find((user) => {
-      return user.id === id;
-    });
-    if (!idExist) {
+    const idToDelete = req.params.id as string;
+
+    //check if user id pattern is correct.
+    if (idToDelete[0].toLowerCase() !== "u") {
+      res.status(400)
+      throw new Error("Id should have letter 'u' as initial.")
+    }
+
+    //try to find user by id
+    const [user] = await db('users').where({ id: idToDelete })
+
+    //check if user exists
+    if (!user) {
       res.status(400)
       throw new Error("User ID not found.");
     }
-    const toDelete = users.findIndex((user) => {
-      res.status(400)
-      return user.id === id;
-    });
 
-    if (toDelete >= 0) {
-      users.splice(toDelete, 1);
-    }
-
+    //executes the properly query to delete user.
+    await db("users").del().where({ id: idToDelete })
     res.status(200).send("User deleted!");
+
+
   } catch (error: any) {
-    res.send(error.message);
+    if (res.statusCode === 200) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
 //delete product
-app.delete("/products/:id", (req: Request, res: Response) => {
+app.delete("/products/:id", async (req: Request, res: Response) => {
 
   try {
-    const id = req.params.id;
+    const idToDelete = req.params.id as string;
 
-    const idExist = products.find((product) => {
-      return product.id === id;
-    });
+    const [idExist] = await db('products').where({ id: idToDelete })
 
     if (!idExist) {
       res.status(404)
       throw new Error("Product ID not found.");
     }
-    const toDelete = products.findIndex((product) => {
-      return product.id === id;
-    });
 
-    if (toDelete >= 0) {
-      products.splice(toDelete, 1);
-    }
+    await db('products').del().where({ id: idToDelete })
 
     res.status(200).send("Product deleted!");
   } catch (error: any) {
-    res.send(error.message);
+    if (res.statusCode === 200) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
 //edit products
-app.put("/products/:id", (req: Request, res: Response) => {
+app.put("/products/:id", async (req: Request, res: Response) => {
 
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
 
     const newName = req.body.name as string | undefined;
     const newPrice = req.body.price as number;
     const newDescription = req.body.description as string | undefined;
     const newImageUrl = req.body.imageUrl as string | undefined;
 
-    const product = products.find((product) => {
-      return product.id === id;
-    });
+    const [product] = await db('products').where({ id: id })
 
 
     if (!product) {
@@ -331,134 +350,210 @@ app.put("/products/:id", (req: Request, res: Response) => {
       }
     }
 
+    if (product) {
+      const updateUser = {
+        name: newName || product.name,
+        price: isNaN(newPrice) ? product.price : newPrice,
+        description: newDescription || product.description,
+        image_url: newImageUrl || product.image_url
+      }
 
-    product.name = newName || product.name;
-    product.price = isNaN(newPrice) ? product.price : newPrice;
-    product.description = newDescription || product.description;
-    product.imageUrl = newImageUrl || product.imageUrl;
+      await db('products').update(updateUser).where({ id: id })
+      res.status(200).send(product);
 
-    res.status(200).send("Product edited!");
+    } else {
+      res.status(404)
+      throw new Error("Product not found.")
+    }
+
 
 
   } catch (error: any) {
     if (res.statusCode === 200) {
       res.status(500)
     }
-    res.send(error.message);
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
   }
 
 });
 
-//////// PET FLOW EXERCICIES
-app.get("/ping", (req: Request, res: Response) => {
-  res.send(`Pong!`);
-});
-//get all pets
-app.get("/pets", (req: Request, res: Response) => {
-  res.status(200).send(pets);
-});
 
-//get pet using multiples results search with query params
-app.get("/pets/search", (req: Request, res: Response) => {
-  const q = req.query.q as string;
-  const result: TPet[] = pets.filter((pet) =>
-    pet.name.toLowerCase().includes(q.toLowerCase())
-  );
-  res.status(200).send(result);
-});
 
-//post a new pet
-const newPetzin: TPet = {
-  name: "cride",
-  id: "p006",
-  age: 10,
-  size: PET_SIZE.MEDIUM,
-};
 
-app.post("/pets", (req: Request, res: Response) => {
-  const id = req.body.id as string;
-  const name = req.body.name as string;
-  const age = req.body.age as number;
-  const size = req.body.size as PET_SIZE;
 
-  const newPet: TPet = {
-    id,
-    name,
-    age,
-    size,
-  };
 
-  pets.push(newPet);
-
-  res.status(201).send("Pet successful registered.");
-
-  return pets;
-});
-
-//get a pet beeing more specific without query params
-app.get("/pet/:id", (req: Request, res: Response) => {
-  const id = req.params.id;
-
-  const result = pets.find((pet) => {
-    return pet.id === id;
-  });
-
-  res.status(200).send(result);
-});
-
-//edit a pet info
-
-app.put("/pets/:id", (req: Request, res: Response) => {
-  const id = req.params.id;
-
-  const newId = req.body.id;
-  const newName = req.body.name;
-  const newAge = req.body.age;
-  const newSize = req.body.size;
-
-  const pet = pets.find((pet) => {
-    return pet.id === id;
-  });
-
-  if (pet) {
-    pet.id = newId || pet.id;
-    pet.name = newName || pet.name;
-    pet.size = newSize || pet.size;
-
-    pet.age = isNaN(newAge) ? pet.age : newAge;
-  }
-
-  res.status(200).send("Pet data updated.");
-});
-
-//delete a pet
-app.delete("/pets/:id", (req: Request, res: Response) => {
-  const id = req.params.id;
-
-  const petIndex = pets.findIndex((pet) => {
-    return pet.id === id;
-  });
-
-  if (petIndex >= 0) {
-    pets.splice(petIndex, 1);
-  }
-
-  res.status(200).send("Pet successful deleted.");
-});
-
-//add a pet
-app.post("/pets", (req: Request, res: Response) => {
-  const id = req.body.id;
-  const name = req.body.name;
+app.get("/purchases/:id", async (req: Request, res: Response) => {
 
   try {
-    if (typeof id !== "string") {
-      throw new Error("'id' should be a string.");
+    const id = req.params.id
+
+
+    if (id === ":id") {
+      res.status(400)
+      throw new Error("Id is mandatory.")
     }
-    if (typeof name !== "string") {
-      throw new Error("'name' should be a string.");
+
+    const [purchases] = await db('purchases').select('purchases.id AS purchaseID',
+      'purchases.buyer AS buyerID',
+      'users.name AS buyerName',
+      'users.email AS userEmail',
+      'purchases.created_at AS createdAt',
+    ).innerJoin('users', 'purchases.buyer', '=', 'users.id').where({ purchaseID: id })
+
+    if (!purchases || typeof purchases === undefined || id === ':id') {
+      res.status(404)
+      throw new Error("Id not found.")
     }
+
+    const productsArray = []
+    const productsPurchased = await db('purchases_products').select().where({ purchase_id: id })
+
+    for (const prod of productsPurchased) {
+      const prodId = prod.product_id
+      const [result] = await db('products').where({ id: prodId })
+      result.quantity = prod.quantity
+      productsArray.push(result)
+    }
+
+    let totalPrice = 0;
+    for (const price of productsArray) {
+      totalPrice += price.price * price.quantity
+    }
+
+    const purchaseResult = {
+      purchaseId: purchases.purchaseID,
+      buyerId: purchases.buyerID,
+      buyerName: purchases.buyerName,
+      totalPrice: totalPrice,
+      createdAt: purchases.createdAt,
+      products: productsArray
+    }
+
+    res.status(200).send(purchaseResult)
+
+
   } catch (error: any) {
-    res.status(400).send("Error!");
+    if (res.statusCode === 200) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
+
   }
-});
+
+})
+
+
+
+app.post("/purchases", async (req: Request, res: Response) => {
+  try {
+    const id = req.body.id as string
+    const buyer = req.body.buyer as string
+    const products = req.body.products
+
+
+    const [idExist] = await db('purchases').where({ id })
+
+    if (idExist) {
+      res.status(400)
+      throw new Error("Purchase ID already registered.")
+    }
+
+    if (!idExist && !id || !buyer) {
+      res.status(400)
+      throw new Error("All fields are mandatory.")
+    }
+
+    const [buyerExist] = await db('users').where({ id: buyer })
+
+    if (!buyerExist) {
+      res.status(404)
+      throw new Error("Buyer not found.")
+    }
+
+    const resultProducts = []
+
+    let totalPrice = 0
+
+    for (const prod of products) {
+      const [product] = await db('products').where({ id: prod.id })
+      resultProducts.push({ ...product, quantity: prod.quantity })
+    }
+
+    for (const product of resultProducts) {
+      totalPrice += product.quantity * product.price
+    }
+
+
+    const newPurchase = {
+      id: id,
+      buyer: buyer,
+      total_price: totalPrice
+    }
+    await db('purchases').insert(newPurchase)
+
+    for (const product of products) {
+      const newPurchasesProducts = {
+        purchase_id: id,
+        product_id: product.id,
+        quantity: product.quantity
+      }
+
+      await db('purchases_products').insert(newPurchasesProducts)
+
+    }
+
+    res.status(201).send("New purchase registered sucessfully.")
+  } catch (error: any) {
+    if (res.statusCode === 201) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
+  }
+})
+
+
+
+app.delete('/purchases/:id', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id
+
+    if (!id || id === ":id" || id === undefined) {
+      res.status(400)
+      throw new Error("An id is exepected to find purchase to be deleted.")
+    }
+
+    const [result] = await db(`purchases`).select(`*`).where({ id: id })
+
+    if (!result) {
+      res.status(404)
+      throw new Error("Product ID cannot be found.")
+    }
+
+    await db('purchases').del().where({ id })
+
+    res.status(200).send("Purchase has been cancelled.")
+
+  } catch (error: any) {
+    if (res.statusCode === 200) {
+      res.status(500)
+    }
+    if (error instanceof Error) {
+      res.send(error.message)
+    } else {
+      res.send("Unexpected error.")
+    }
+  }
+})
+
