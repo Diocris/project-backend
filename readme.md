@@ -123,10 +123,11 @@ It simulates an ecommerce, where requisitions are sent through an API to databas
 </br>
 <blockquote>
 {</br>
-"name": "Monitor", </br>
-"price": 200,</br>
-"description": "Amazing monitor.",</br>
-"imageUrl": "https://fakeimg.pl/600x400?text=monitor"</br>
+"name": "string", </br>
+"price": number,</br>
+"description": "string",</br>
+"imageUrl": "string
+"</br>
 }
 </blockquote>
 </li>
