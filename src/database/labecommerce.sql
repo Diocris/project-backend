@@ -70,7 +70,7 @@ CREATE TABLE purchases (
     id TEXT PRIMARY KEY UNIQUE NOT NULL,
     buyer TEXT NOT NULL,
     total_price REAL NOT NULL,
-    create_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (DATETIME('now')) NOT NULL,
     
     Foreign Key (buyer) REFERENCES users(id)
     ON UPDATE CASCADE
@@ -81,24 +81,28 @@ CREATE TABLE purchases (
 DROP TABLE purchases;
 
 
-INSERT INTO purchases (id, buyer, total_price, create_at)
-VALUES  ('pch01', 'u001', 200, DATE('now')),
-        ('pch02', 'u002', 300, DATE('now')),
-        ('pch03', 'u003', 400, DATE('now')); 
+INSERT INTO purchases (id, buyer, total_price)
+VALUES  ('pch01', 'u001', 200 ),
+        ('pch02', 'u002', 300 ),
+        ('pch03', 'u003', 400); 
         
+        
+INSERT INTO purchases (id, buyer, total_price) VALUES ('pch04', 'u001', 200);
 
 UPDATE purchases 
-SET total_price = 500
-WHERE id = 'pch03';
+SET quantity = 1
+WHERE id = 'pch02';
 
 SELECT * FROM purchases;
+
+DELETE FROM purchases WHERE id = "u001";
 
 SELECT purchases.id as purchaseId,
         purchases.buyer as buyerID,
         users.name as buyerName,
         users.email as buyerEmail,
         purchases.total_price as total,
-        purchases.create_at as purchasedAt
+        purchases.created_at as purchasedAt
 FROM purchases
 INNER JOIN users 
 ON purchases.buyer = users.id;
@@ -128,6 +132,9 @@ VALUES  ("pch01","p001", 5),
         ("pch02","p003", 50),
         ("pch01","p002", 3);
 
+UPDATE purchases_products
+SET quantity = 1
+WHERE purchase_id = 'pch02';
 
 SELECT purchases_products.purchase_id AS purchaseID,
 purchases_products.product_id AS productID,
@@ -145,6 +152,8 @@ ON purchases_products.product_id = products.id
 GROUP BY purchaseID
 ;
 
+SELECT *
+FROM purchases_products;
 
 SELECT *
 FROM purchases_products
@@ -155,3 +164,10 @@ ON purchases_products.purchase_id = purchases.id
 INNER JOIN products
 ON purchases_products.product_id = products.id;
 
+SELECT * FROM purchases
+INNER JOIN users 
+ON purchases.buyer = users.id
+WHERE buyer = "u001"
+;
+
+DELETE FROM purchases_products WHERE purchase_id = 'pch01';
