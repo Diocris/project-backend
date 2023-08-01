@@ -6,7 +6,8 @@ Labecommerce backend project.
 This project was made for study purposes, being part of a course taught by Labenu.
 It simulates an ecommerce, where requisitions are sent through an API to database.
 </h3>
-
+</br>
+<h2> <a href="https://documenter.getpostman.com/view/27681104/2s946k5AST"> API Documentation</a></h2>
 </br>
 
 <p>On this project I used concepts and tecnologies such as:</p>
